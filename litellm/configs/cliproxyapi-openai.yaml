@@ -19,6 +19,26 @@ model_list:
       api_base: os.environ/CLIPROXYAPI_BASE_URL
       api_key: os.environ/CLIPROXYAPI_API_KEY
 
+  # GPT 5.5 aliases without the literal model slug for Cursor BYOK clients
+  # that special-case OpenAI model names.
+  - model_name: cpa-openai-frontier(xhigh)
+    litellm_params:
+      model: openai/gpt-5.5(xhigh)
+      api_base: os.environ/CLIPROXYAPI_BASE_URL
+      api_key: os.environ/CLIPROXYAPI_API_KEY
+
+  - model_name: cpa-openai-frontier(high)
+    litellm_params:
+      model: openai/gpt-5.5(high)
+      api_base: os.environ/CLIPROXYAPI_BASE_URL
+      api_key: os.environ/CLIPROXYAPI_API_KEY
+
+  - model_name: cpa-openai-frontier(medium)
+    litellm_params:
+      model: openai/gpt-5.5(medium)
+      api_base: os.environ/CLIPROXYAPI_BASE_URL
+      api_key: os.environ/CLIPROXYAPI_API_KEY
+
   # gpt-5.4
   - model_name: cpa-openai-gpt-5.4(xhigh)
     litellm_params:

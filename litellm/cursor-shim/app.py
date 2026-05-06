@@ -94,13 +94,225 @@ def _looks_like_responses_payload(payload: object) -> bool:
 
 def _rewrite_upstream_path(request_path: str, payload: object) -> str:
     normalized_path = "/" + request_path.lstrip("/")
-    if (
-        normalized_path.endswith("/chat/completions")
-        and _is_responses_model(payload)
-        and _looks_like_responses_payload(payload)
-    ):
+    if normalized_path.endswith("/chat/completions") and _is_responses_model(payload):
         return normalized_path[: -len("/chat/completions")] + "/responses"
     return normalized_path
+
+
+def _chat_content_to_text(content: object) -> str:
+    if content is None:
+        return ""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        return "\n".join(_convert_content_part_to_text(part) for part in content)
+    return str(content)
+
+
+def _json_string(value: object, default: str = "{}") -> str:
+    if value is None:
+        return default
+    if isinstance(value, str):
+        return value
+    return json.dumps(value, separators=(",", ":"), ensure_ascii=True)
+
+
+def _convert_chat_tool_call_to_responses_item(tool_call: object, fallback_index: int) -> dict[str, object] | None:
+    if not isinstance(tool_call, dict):
+        return None
+
+    function_def = tool_call.get("function")
+    if not isinstance(function_def, dict):
+        function_def = {}
+
+    call_id = tool_call.get("id") or tool_call.get("call_id") or f"call_{fallback_index}"
+    name = function_def.get("name") or tool_call.get("name") or "tool"
+    arguments = function_def.get("arguments", tool_call.get("arguments"))
+
+    return {
+        "type": "function_call",
+        "call_id": str(call_id),
+        "name": str(name),
+        "arguments": _json_string(arguments),
+    }
+
+
+def _convert_chat_tool_message_to_responses_item(message: dict[str, object], fallback_index: int) -> dict[str, object]:
+    call_id = (
+        message.get("tool_call_id")
+        or message.get("call_id")
+        or message.get("id")
+        or message.get("name")
+        or f"call_{fallback_index}"
+    )
+
+    return {
+        "type": "function_call_output",
+        "call_id": str(call_id),
+        "output": _chat_content_to_text(message.get("content", "")),
+    }
+
+
+def _convert_chat_messages_to_responses_input(messages: object) -> object:
+    if not isinstance(messages, list):
+        return messages
+
+    input_items: list[dict[str, object]] = []
+    for index, message in enumerate(messages):
+        if not isinstance(message, dict):
+            input_items.append({"role": "user", "content": str(message)})
+            continue
+
+        role = message.get("role")
+        if role in {"tool", "function"}:
+            input_items.append(_convert_chat_tool_message_to_responses_item(message, index))
+            continue
+
+        tool_calls = message.get("tool_calls")
+        function_call = message.get("function_call")
+        has_tool_calls = isinstance(tool_calls, list) and len(tool_calls) > 0
+        has_function_call = isinstance(function_call, dict)
+        content = message.get("content")
+
+        item = {
+            key: value
+            for key, value in message.items()
+            if key not in {"tool_calls", "function_call"}
+        }
+        item.setdefault("role", "user")
+        item.setdefault("content", "")
+
+        if content is not None or not (has_tool_calls or has_function_call):
+            input_items.append(item)
+
+        if isinstance(tool_calls, list):
+            for tool_index, tool_call in enumerate(tool_calls):
+                responses_tool_call = _convert_chat_tool_call_to_responses_item(
+                    tool_call,
+                    index * 1000 + tool_index,
+                )
+                if responses_tool_call is not None:
+                    input_items.append(responses_tool_call)
+
+        if isinstance(function_call, dict):
+            responses_function_call = _convert_chat_tool_call_to_responses_item(
+                {"function": function_call},
+                index,
+            )
+            if responses_function_call is not None:
+                input_items.append(responses_function_call)
+
+    return input_items
+
+
+def _responses_text_content_type(role: object) -> str:
+    return "output_text" if role == "assistant" else "input_text"
+
+
+def _normalize_responses_content_part(part: object, role: object = None) -> object:
+    text_type = _responses_text_content_type(role)
+
+    if isinstance(part, str):
+        return {"type": text_type, "text": part}
+
+    if not isinstance(part, dict):
+        return {"type": text_type, "text": str(part)}
+
+    normalized = dict(part)
+    part_type = normalized.get("type")
+
+    # Cursor sends OpenAI chat-style content parts to /chat/completions. After
+    # rewriting to /responses, CLIProxyAPI expects Responses content type names.
+    if part_type in {"text", "input_text", "output_text"}:
+        normalized["type"] = text_type
+    elif part_type == "image_url":
+        normalized["type"] = "input_image"
+        image_url = normalized.pop("image_url", None)
+        if isinstance(image_url, dict) and isinstance(image_url.get("url"), str):
+            normalized["image_url"] = image_url["url"]
+        elif isinstance(image_url, str):
+            normalized["image_url"] = image_url
+
+    return normalized
+
+
+def _normalize_responses_input(input_value: object) -> object:
+    if not isinstance(input_value, list):
+        return input_value
+
+    normalized_items: list[object] = []
+    for item in input_value:
+        if isinstance(item, str):
+            normalized_items.append(
+                {
+                    "role": "user",
+                    "content": [{"type": "input_text", "text": item}],
+                }
+            )
+            continue
+
+        if not isinstance(item, dict):
+            normalized_items.append(
+                {
+                    "role": "user",
+                    "content": [{"type": "input_text", "text": str(item)}],
+                }
+            )
+            continue
+
+        normalized_item = dict(item)
+        role = normalized_item.get("role")
+        if role in {"tool", "function"}:
+            normalized_items.append(_convert_chat_tool_message_to_responses_item(normalized_item, len(normalized_items)))
+            continue
+
+        content = normalized_item.get("content")
+        if isinstance(content, list):
+            normalized_item["content"] = [_normalize_responses_content_part(part, role) for part in content]
+        elif isinstance(content, str):
+            normalized_item["content"] = [{"type": _responses_text_content_type(role), "text": content}]
+        elif content is not None:
+            normalized_item["content"] = [{"type": _responses_text_content_type(role), "text": str(content)}]
+
+        normalized_items.append(normalized_item)
+
+    return normalized_items
+
+
+def _normalize_responses_tool(tool: object) -> object:
+    if not isinstance(tool, dict):
+        return tool
+
+    normalized = dict(tool)
+    function_def = normalized.get("function")
+    if normalized.get("type") == "function" and isinstance(function_def, dict):
+        normalized.pop("function", None)
+        for key in ("name", "description", "parameters", "strict"):
+            if key in function_def and key not in normalized:
+                normalized[key] = function_def[key]
+
+    return normalized
+
+
+def _normalize_responses_tools(tools: object) -> object:
+    if not isinstance(tools, list):
+        return tools
+
+    return [_normalize_responses_tool(tool) for tool in tools]
+
+
+def _normalize_responses_tool_choice(tool_choice: object) -> object:
+    if not isinstance(tool_choice, dict):
+        return tool_choice
+
+    normalized = dict(tool_choice)
+    function_choice = normalized.get("function")
+    if normalized.get("type") == "function" and isinstance(function_choice, dict):
+        normalized.pop("function", None)
+        if isinstance(function_choice.get("name"), str) and "name" not in normalized:
+            normalized["name"] = function_choice["name"]
+
+    return normalized
 
 
 def _sanitize_responses_payload(payload: object) -> object:
@@ -109,10 +321,26 @@ def _sanitize_responses_payload(payload: object) -> object:
 
     sanitized = dict(payload)
 
+    if "input" not in sanitized and "messages" in sanitized:
+        sanitized["input"] = _convert_chat_messages_to_responses_input(sanitized.pop("messages"))
+
+    if "input" in sanitized:
+        sanitized["input"] = _normalize_responses_input(sanitized["input"])
+
+    if "max_tokens" in sanitized and "max_output_tokens" not in sanitized:
+        sanitized["max_output_tokens"] = sanitized.pop("max_tokens")
+
+    if "tools" in sanitized:
+        sanitized["tools"] = _normalize_responses_tools(sanitized["tools"])
+
+    if "tool_choice" in sanitized:
+        sanitized["tool_choice"] = _normalize_responses_tool_choice(sanitized["tool_choice"])
+
     # CLIProxyAPI's OpenAI-compatible Responses implementation currently
     # rejects some optional OpenAI fields that Cursor includes.
     for field in (
         "metadata",
+        "stream_options",
     ):
         sanitized.pop(field, None)
 
@@ -314,21 +542,24 @@ def _responses_usage_to_chat_usage(payload: dict) -> dict | None:
     }
 
 
-def _translate_responses_json_to_chat_completion(payload: dict) -> dict:
+def _translate_responses_json_to_chat_completion(payload: dict, model_override: str | None = None) -> dict:
     content, tool_calls, finish_reason = _extract_chat_message_from_response(payload)
+    message: dict[str, object] = {
+        "role": "assistant",
+        "content": content or "",
+    }
+    if tool_calls is not None:
+        message["tool_calls"] = tool_calls
+
     translated = {
         "id": payload.get("id", f"chatcmpl-{int(time.time() * 1000)}"),
         "object": "chat.completion",
         "created": payload.get("created_at", int(time.time())),
-        "model": payload.get("model"),
+        "model": model_override or payload.get("model"),
         "choices": [
             {
                 "index": 0,
-                "message": {
-                    "role": "assistant",
-                    "content": content,
-                    "tool_calls": tool_calls,
-                },
+                "message": message,
                 "finish_reason": finish_reason,
             }
         ],
@@ -345,10 +576,10 @@ def _encode_sse_event(data: dict) -> bytes:
     return f"data: {json.dumps(data, separators=(',', ':'))}\n\n".encode("utf-8")
 
 
-async def _translate_responses_sse_to_chat_chunks(upstream_response: httpx.Response):
+async def _translate_responses_sse_to_chat_chunks(upstream_response: httpx.Response, model_override: str | None = None):
     response_id: str | None = None
     created: int | None = None
-    model: str | None = None
+    model: str | None = model_override
     emitted_role = False
     saw_tool_call = False
     usage: dict | None = None
@@ -373,6 +604,23 @@ async def _translate_responses_sse_to_chat_chunks(upstream_response: httpx.Respo
             response_id = response_id or response.get("id")
             created = created or response.get("created_at")
             model = model or response.get("model")
+            if not emitted_role:
+                emitted_role = True
+                yield _encode_sse_event(
+                    {
+                        "id": response_id or f"chatcmpl-{int(time.time() * 1000)}",
+                        "object": "chat.completion.chunk",
+                        "created": created or int(time.time()),
+                        "model": model,
+                        "choices": [
+                            {
+                                "index": 0,
+                                "delta": {"role": "assistant"},
+                                "finish_reason": None,
+                            }
+                        ],
+                    }
+                )
             continue
 
         if event_type == "response.output_item.added" and isinstance(event.get("item"), dict):
@@ -616,9 +864,11 @@ async def proxy(request: Request, path: str) -> Response:
 
     upstream_response = await client.send(upstream_request, stream=True)
     response_headers = _filter_headers(upstream_response.headers)
+    upstream_success = 200 <= upstream_response.status_code < 300
     translate_responses_back_to_chat = (
         original_path.endswith("/chat/completions")
         and upstream_path.endswith("/responses")
+        and upstream_success
     )
 
     if request.method == "HEAD":
@@ -628,7 +878,7 @@ async def proxy(request: Request, path: str) -> Response:
     if "text/event-stream" in upstream_response.headers.get("content-type", ""):
         if translate_responses_back_to_chat:
             return StreamingResponse(
-                _translate_responses_sse_to_chat_chunks(upstream_response),
+                _translate_responses_sse_to_chat_chunks(upstream_response, _get_model_name(payload)),
                 status_code=upstream_response.status_code,
                 headers=response_headers,
                 background=BackgroundTask(upstream_response.aclose),
@@ -658,7 +908,7 @@ async def proxy(request: Request, path: str) -> Response:
         try:
             json_body = json.loads(body)
             if translate_responses_back_to_chat and isinstance(json_body, dict):
-                json_body = _translate_responses_json_to_chat_completion(json_body)
+                json_body = _translate_responses_json_to_chat_completion(json_body, _get_model_name(payload))
             return JSONResponse(
                 content=json_body,
                 status_code=upstream_response.status_code,
