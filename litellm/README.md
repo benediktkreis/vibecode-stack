@@ -12,7 +12,7 @@ docker compose logs cloudflared | grep -o 'https://.*\.trycloudflare\.com'
 
 - Using this URL and LITELLM_MASTER_KEY from .env in claude-code and cursor
 
-# CLIProxyAPI-backed Codex/Antigravity models
+# CLIProxyAPI-backed Codex models
 
 `client -> cloudflared tunnel -> LiteLLM (Docker :4001) -> CLIProxyAPI (Docker :8317)`
 
