@@ -14,20 +14,15 @@ docker compose logs cloudflared | grep -o 'https://.*\.trycloudflare\.com'
 
 # CLIProxyAPI-backed Codex/Antigravity models
 
+`client -> cloudflared tunnel -> LiteLLM (Docker :4001) -> CLIProxyAPI (Docker :8317)`
 
-`client -> cursor-shim (Docker :4000) -> LiteLLM (Docker :4001) -> CLIProxyAPI service (Docker :8317)`
-
-The compose includes:
+The compose stack:
 
 - `cliproxyapi` for Codex OAuth-backed upstream access
-- `litellm` as the internal gateway on port `4001`
-- `cursor-shim` as the public entrypoint on port `4000`
+- `litellm` as the gateway on port `4001`
+- `cloudflared` exposes LiteLLM via a public trycloudflare URL
 
-For `cpa-*` models, the shim reroutes to LiteLLM's `/v1/responses` when Cursor sends a Responses-shaped request. CLIProxyAPI/Codex can stream Cursor editor actions as Responses `custom_tool_call` events; the shim converts those back into Chat Completions `tool_calls` for Cursor to execute.
-
-
-
-Then authenticate Codex OAuth against the running `cliproxyapi` container:
+Authenticate Codex OAuth against the running `cliproxyapi` container:
 
 ```bash
 docker compose exec cliproxyapi /CLIProxyAPI/CLIProxyAPI --codex-login --no-browser

@@ -1,11 +1,11 @@
 model_list:
   # ── GITHUB COPILOT (Student plan) ───────────────────────────
   # --- OpenAI (chat) ---
-  - model_name: copilot-shim-resp-gpt-4.1
+  - model_name: copilot-gpt-4.1
     litellm_params:
       model: github_copilot/gpt-4.1
 
-  - model_name: copilot-shim-resp-gpt-5.2
+  - model_name: copilot-gpt-5.2
     litellm_params:
       model: github_copilot/gpt-5.2
       extra_body:
@@ -21,14 +21,14 @@ model_list:
       model: github_copilot/gpt-4
 
   # --- OpenAI (Codex) ---
-  - model_name: copilot-shim-resp-gpt-5.2-codex
+  - model_name: copilot-gpt-5.2-codex
     litellm_params:
       model: github_copilot/gpt-5.2-codex
       extra_body:
         reasoning:
           effort: xhigh
 
-  - model_name: copilot-shim-resp-gpt-5.3-codex
+  - model_name: copilot-gpt-5.3-codex
     litellm_params:
       model: github_copilot/gpt-5.3-codex
       extra_body:
