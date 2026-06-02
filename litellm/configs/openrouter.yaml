@@ -1,5 +1,14 @@
 model_list:
   # ── OPENROUTER ──────────────────────────────────────────────
+  - model_name: or-minimax-m3
+    litellm_params:
+      model: openrouter/minimax/minimax-m3
+      api_key: os.environ/OPENROUTER_API_KEY
+      api_base: https://openrouter.ai/api/v1
+      extra_body:
+        reasoning:
+          enabled: true
+
   - model_name: or-minimax-m2.7
     litellm_params:
       model: openrouter/minimax/minimax-m2.7
@@ -18,6 +27,12 @@ model_list:
         reasoning:
           enabled: true
 
+  - model_name: or-kimi-k2.6
+    litellm_params:
+      model: openrouter/moonshotai/kimi-k2.6
+      api_key: os.environ/OPENROUTER_API_KEY
+      api_base: https://openrouter.ai/api/v1
+
   - model_name: or-kimi-k2.5
     litellm_params:
       model: openrouter/moonshotai/kimi-k2.5
@@ -30,27 +45,21 @@ model_list:
       api_key: os.environ/OPENROUTER_API_KEY
       api_base: https://openrouter.ai/api/v1
 
+  - model_name: or-glm-5.1
+    litellm_params:
+      model: openrouter/z-ai/glm-5.1
+      api_key: os.environ/OPENROUTER_API_KEY
+      api_base: https://openrouter.ai/api/v1
+
   - model_name: or-glm-4.7
     litellm_params:
       model: openrouter/z-ai/glm-4.7
       api_key: os.environ/OPENROUTER_API_KEY
       api_base: https://openrouter.ai/api/v1
 
-  - model_name: or-nemotron-120b-free
+  - model_name: or-qwen3.7-max
     litellm_params:
-      model: openrouter/nvidia/nemotron-3-super-120b-a12b:free
-      api_key: os.environ/OPENROUTER_API_KEY
-      api_base: https://openrouter.ai/api/v1
-
-  - model_name: or-step-3.5-flash-free
-    litellm_params:
-      model: openrouter/stepfun/step-3.5-flash:free
-      api_key: os.environ/OPENROUTER_API_KEY
-      api_base: https://openrouter.ai/api/v1
-
-  - model_name: or-mimo-v2-pro
-    litellm_params:
-      model: openrouter/xiaomi/mimo-v2-pro
+      model: openrouter/qwen/qwen3.7-max
       api_key: os.environ/OPENROUTER_API_KEY
       api_base: https://openrouter.ai/api/v1
 
@@ -81,11 +90,5 @@ model_list:
   - model_name: or-qwen3.5-flash-free
     litellm_params:
       model: openrouter/qwen/qwen3.5-flash-02-23
-      api_key: os.environ/OPENROUTER_API_KEY
-      api_base: https://openrouter.ai/api/v1
-
-  - model_name: or-z-ai/glm-5.1
-    litellm_params:
-      model: openrouter/z-ai/glm-5.1
       api_key: os.environ/OPENROUTER_API_KEY
       api_base: https://openrouter.ai/api/v1

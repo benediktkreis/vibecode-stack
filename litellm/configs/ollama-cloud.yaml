@@ -12,15 +12,21 @@ model_list:
       api_base: https://ollama.com/v1
       api_key: os.environ/OLLAMA_CLOUD_API_KEY
 
-  - model_name: gemma4:31b-cloud
+  - model_name: minimax-m3:cloud
     litellm_params:
-      model: openai/gemma4:31b-cloud
+      model: openai/minimax-m3:cloud
       api_base: https://ollama.com/v1
       api_key: os.environ/OLLAMA_CLOUD_API_KEY
 
   - model_name: qwen3.5:397b-cloud
     litellm_params:
       model: openai/gqwen3.5:397b-cloud
+      api_base: https://ollama.com/v1
+      api_key: os.environ/OLLAMA_CLOUD_API_KEY
+
+  - model_name: kimi-k2.6:cloud
+    litellm_params:
+      model: openai/kimi-k2.6:cloud
       api_base: https://ollama.com/v1
       api_key: os.environ/OLLAMA_CLOUD_API_KEY
 

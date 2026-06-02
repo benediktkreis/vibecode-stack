@@ -14,7 +14,10 @@ services:
     image: ghcr.io/berriai/litellm:main-latest
     container_name: litellm-proxy
     depends_on:
-      - cliproxyapi
+      cliproxyapi:
+        condition: service_started
+    ports:
+      - "4001:4001"
     environment:
       CLIPROXYAPI_BASE_URL: ${CLIPROXYAPI_BASE_URL:-http://cliproxyapi:8317/v1}
       CLIPROXYAPI_API_KEY: ${CLIPROXYAPI_API_KEY:-sk-dummy}
@@ -39,8 +42,32 @@ services:
       timeout: 5s
       retries: 5
 
-  cloudflared:
+  tailscale:
+    image: tailscale/tailscale:latest
+    container_name: litellm-tailscale
+    hostname: ${TS_HOSTNAME:-litellm-proxy}
+    environment:
+      TS_AUTHKEY: ${TS_AUTHKEY:?Set TS_AUTHKEY in .env — create a reusable key at https://login.tailscale.com/admin/settings/keys}
+      TS_HOSTNAME: ${TS_HOSTNAME:-litellm-proxy}
+      TS_STATE_DIR: /var/lib/tailscale
+      TS_USERSPACE: ${TS_USERSPACE:-true}
+    volumes:
+      - tailscale-state:/var/lib/tailscale
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    cap_add:
+      - NET_ADMIN
+    restart: unless-stopped
+
+  cloudflared-quick:
+    profiles: ["cloudflare-quick"]
     image: cloudflare/cloudflared:latest
     container_name: litellm-tunnel
     command: tunnel --no-autoupdate --url http://litellm:4001
+    depends_on:
+      litellm:
+        condition: service_healthy
     restart: unless-stopped
+
+volumes:
+  tailscale-state:

@@ -4,23 +4,121 @@
 docker compose up -d
 ```
 
-# Get your public tunnel URL
+# Access via Tailscale and Cloudflare quick tunnel
 
-```
-docker compose logs cloudflared | grep -o 'https://.*\.trycloudflare\.com'
+`litellm` runs as a normal Docker service on port `4001`. Tailscale Funnel is the stable public path; Cloudflare quick tunnel remains available as an optional temporary path.
+
+1. Create a **reusable** auth key: [Tailscale keys](https://login.tailscale.com/admin/settings/keys).
+2. Add to `.env`:
+   ```bash
+   TS_AUTHKEY=tskey-auth-...
+   TS_HOSTNAME=litellm-proxy
+   LITELLM_BASE_URL=https://litellm-proxy.tail-xxxxx.ts.net
+   ```
+   Replace `tail-xxxxx` with your tailnet suffix (see [Machines](https://login.tailscale.com/admin/machines) after the first `docker compose up`).
+3. Enable **MagicDNS**: [DNS settings](https://login.tailscale.com/admin/dns).
+4. Start: `docker compose up -d`
+
+## Tailscale Funnel for Cursor
+
+Cursor rejects private provider URLs, including `127.0.0.1`, LAN IPs, and private Tailscale `100.x` addresses. Use Tailscale Funnel for Cursor:
+
+```bash
+docker exec litellm-tailscale tailscale funnel --bg --https=443 --yes http://litellm:4001
+docker exec litellm-tailscale tailscale funnel status
 ```
 
-- Using this URL and LITELLM_MASTER_KEY from .env in claude-code and cursor
+On first use, Tailscale may print an approval URL. Open it, enable Funnel for this node, then rerun the `tailscale funnel` command.
+
+Expected status:
+
+```text
+https://litellm-proxy.tail-xxxxx.ts.net
+|-- / proxy http://litellm:4001
+```
+
+Use this URL in Cursor:
+
+```text
+Base URL: https://litellm-proxy.tail-xxxxx.ts.net
+API key:  LITELLM_MASTER_KEY
+```
+
+Funnel is public internet exposure. LiteLLM's `LITELLM_MASTER_KEY` protects the API, so keep it strong.
+
+## Optional Cloudflare quick tunnel
+
+Cloudflare quick tunnels still work as an alternate public URL, but the URL is ephemeral and can change after sleep, restart, or tunnel recreation.
+
+Start the optional Cloudflare tunnel:
+
+```bash
+docker compose --profile cloudflare-quick up -d cloudflared-quick
+```
+
+Read the current `trycloudflare.com` URL:
+
+```bash
+docker compose logs cloudflared-quick | grep -o 'https://.*\.trycloudflare\.com' | tail -1
+```
+
+Use that printed URL in Cursor with `LITELLM_MASTER_KEY`.
+
+To make the README helper functions use Cloudflare instead of Funnel, temporarily set `.env` to the printed URL:
+
+```bash
+LITELLM_BASE_URL=https://your-current-quick-tunnel.trycloudflare.com
+```
+
+Set it back to the Funnel URL when you want the stable Tailscale path again.
+
+Stop the Cloudflare tunnel when you do not want it exposed:
+
+```bash
+docker compose --profile cloudflare-quick stop cloudflared-quick
+```
+
+The Cloudflare quick tunnel targets `http://litellm:4001`; it does not proxy through Tailscale.
+
+## Tailnet-only access
+
+On each **client device**, install the Tailscale app and sign in to the same tailnet (no Tailscale required on the Docker host beyond the container).
+
+Enable a tailnet-only HTTP listener on port `4001`:
+
+```bash
+docker exec litellm-tailscale tailscale serve --bg --http=4001 http://litellm:4001
+```
+
+```bash
+# From any device on the tailnet
+curl "http://${TS_HOSTNAME}.tail-xxxxx.ts.net:4001/health/liveliness"
+curl "http://${TS_HOSTNAME}.tail-xxxxx.ts.net:4001/v1/models" -H "Authorization: Bearer $LITELLM_MASTER_KEY"
+```
+
+Optional local access on the Docker host (port published by the `litellm` service):
+
+```bash
+curl http://127.0.0.1:4001/health/liveliness
+```
+
+If the `tailscale` container fails to start on Mac, keep `TS_USERSPACE=true` in `.env` (default). On Linux you can try `TS_USERSPACE=false` for kernel mode.
+
+Use `${LITELLM_BASE_URL}` and `LITELLM_MASTER_KEY` from `.env` in Claude Code. The helper below routes `codex-*` models directly through LiteLLM's Claude-compatible endpoint, and routes all other models through Claude Code Router into LiteLLM's OpenAI-compatible chat endpoint. For OpenAI-compatible clients, use `${LITELLM_BASE_URL}` or `${LITELLM_BASE_URL}/v1` depending on what that client expects.
 
 # CLIProxyAPI-backed Codex models
 
-`client -> cloudflared tunnel -> LiteLLM (Docker :4001) -> CLIProxyAPI (Docker :8317)`
+`Cursor/client -> Tailscale Funnel or Cloudflare quick tunnel -> LiteLLM -> CLIProxyAPI (Docker :8317)`
+
+Tailnet-only clients can also use `http://litellm-proxy.tail-xxxxx.ts.net:4001`.
 
 The compose stack:
 
-- `cliproxyapi` for Codex OAuth-backed upstream access
-- `litellm` as the gateway on port `4001`
-- `cloudflared` exposes LiteLLM via a public trycloudflare URL
+- `tailscale` — tailnet identity and Funnel ingress
+- `tailscale funnel` — public HTTPS URL for Cursor
+- `cloudflared-quick` — optional ephemeral Cloudflare quick tunnel profile
+- `litellm` — gateway on Docker port `4001`
+- `cliproxyapi` — Codex OAuth-backed upstream access
 
 Authenticate Codex OAuth against the running `cliproxyapi` container:
 
@@ -35,6 +133,15 @@ docker compose exec cliproxyapi /CLIProxyAPI/CLIProxyAPI --codex-login --no-brow
 I use the following functions in my bashrc
 
 ```
+litellm_base_url() {
+  if [ -n "${LITELLM_BASE_URL:-}" ]; then
+    echo "${LITELLM_BASE_URL%/}"
+    return 0
+  fi
+  echo "Set LITELLM_BASE_URL in $HOME/vibecode/litellm/.env (e.g. https://litellm-proxy.tail-xxxxx.ts.net)" >&2
+  return 1
+}
+
 use_litellm_cursor() {
   local DB="$HOME/Library/Application Support/Cursor/User/globalStorage/state.vscdb"
   local JSON_KEY="src.vs.platform.reactivestorage.browser.reactiveStorageServiceImpl.persistentStorage.applicationUser"
@@ -49,20 +156,15 @@ use_litellm_cursor() {
     sqlite3 "$DB" "UPDATE ItemTable SET value = '' WHERE key = 'cursorAuth/openAIKey';"
     echo "✅ Reset to native Cursor models"
   else
-    :  
-
-    local LITTELM_URL=""
-    local attempt=0
-    while [ "$attempt" -lt 90 ] && [ -z "$LITTELM_URL" ]; do
-      sleep 1
-      LITTELM_URL=$(cd "$LITELLM_DIR" && docker compose logs cloudflared 2>/dev/null | grep -o 'https://.*\.trycloudflare\.com' | tail -1)
-      attempt=$((attempt + 1))
-    done
-
-    if [ -z "$LITTELM_URL" ]; then
-      echo "❌ Could not read trycloudflare URL from cloudflared logs (timed out after ${attempt}s)"
-      return 1
+    if [ -f "$LITELLM_DIR/.env" ]; then
+      set -a
+      # shellcheck source=/dev/null
+      source "$LITELLM_DIR/.env"
+      set +a
     fi
+
+    local LITTELM_URL
+    LITTELM_URL=$(litellm_base_url)
 
     echo "🌐 Litellm proxy URL: $LITTELM_URL"
 
@@ -83,79 +185,102 @@ use_litellm_claude() {
     unset ANTHROPIC_BASE_URL
     unset ANTHROPIC_API_URL
     unset ANTHROPIC_MODEL
+    unset ANTHROPIC_SMALL_FAST_MODEL
     unset ANTHROPIC_CUSTOM_MODEL_OPTION
     unset ANTHROPIC_CUSTOM_MODEL_OPTION_NAME
     unset ANTHROPIC_CUSTOM_MODEL_OPTION_DESCRIPTION
     unset ANTHROPIC_DEFAULT_OPUS_MODEL
+    unset ANTHROPIC_DEFAULT_OPUS_MODEL_NAME
+    unset ANTHROPIC_DEFAULT_OPUS_MODEL_DESCRIPTION
+    unset ANTHROPIC_DEFAULT_OPUS_MODEL_SUPPORTED_CAPABILITIES
     unset ANTHROPIC_DEFAULT_SONNET_MODEL
+    unset ANTHROPIC_DEFAULT_SONNET_MODEL_NAME
+    unset ANTHROPIC_DEFAULT_SONNET_MODEL_DESCRIPTION
+    unset ANTHROPIC_DEFAULT_SONNET_MODEL_SUPPORTED_CAPABILITIES
     unset ANTHROPIC_DEFAULT_HAIKU_MODEL
+    unset ANTHROPIC_DEFAULT_HAIKU_MODEL_NAME
+    unset ANTHROPIC_DEFAULT_HAIKU_MODEL_DESCRIPTION
+    unset ANTHROPIC_DEFAULT_HAIKU_MODEL_SUPPORTED_CAPABILITIES
     unset CLAUDE_CODE_SUBAGENT_MODEL
+    unset CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY
+    unset CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS
     unset NO_PROXY
     unset DISABLE_TELEMETRY
     unset DISABLE_COST_WARNINGS
     unset API_TIMEOUT_MS
 
-    echo "CCR/LiteLLM environment cleared for this shell."
+    echo "Claude Code LiteLLM environment cleared for this shell."
     echo "Now run: claude"
     echo "Then inside Claude Code run: /model default"
     return 0
   fi
 
-  local LITELLM_KEY="..."
   local LITELLM_DIR="$HOME/vibecode/litellm"
 
-  local LITTELM_URL=""
-  local attempt=0
-  while [ "$attempt" -lt 90 ] && [ -z "$LITTELM_URL" ]; do
-    sleep 1
-    LITTELM_URL=$(cd "$LITELLM_DIR" && docker compose logs cloudflared 2>/dev/null | grep -o 'https://.*\.trycloudflare\.com' | tail -1)
-    attempt=$((attempt + 1))
-  done
+  if [ -f "$LITELLM_DIR/.env" ]; then
+    set -a
+    # shellcheck source=/dev/null
+    source "$LITELLM_DIR/.env"
+    set +a
+  fi
 
-  if [ -z "$LITTELM_URL" ]; then
-    echo "❌ Could not read trycloudflare URL from cloudflared logs (timed out after ${attempt}s)"
+  local LITELLM_URL
+  if ! LITELLM_URL=$(litellm_base_url); then
     return 1
   fi
 
-  echo "🌐 LiteLLM proxy URL: $LITTELM_URL"
+  local LITELLM_KEY="${LITELLM_MASTER_KEY:-}"
+  if [ -z "$LITELLM_KEY" ]; then
+    echo "Set LITELLM_MASTER_KEY in $LITELLM_DIR/.env" >&2
+    return 1
+  fi
+
+  echo "🌐 LiteLLM proxy URL: $LITELLM_URL"
 
   local models=(
-    ali-qwen3.5-plus
-    ali-qwen3-max-2026-01-23
-    ali-qwen3-coder-next
-    ali-qwen3-coder-plus
-    ali-glm-5
-    ali-glm-4.7
-    ali-kimi-k2.5
-    ali-MiniMax-M2.5
-    or-minimax-m2.7
-    or-minimax-m2.5
-    or-kimi-k2.5
-    or-glm-5
-    or-glm-4.7
-    or-nemotron-120b-free
-    or-step-3.5-flash-free
-    or-mimo-v2-pro
-    or-qwen3.6-plus
-    or-qwen3.5-plus
-    or-qwen3.5-397b
-    or-qwen3-coder-next
-    or-qwen3.5-flash-free
-    or-z-ai/glm-5.1
-    glm-5.1:cloud
-    minimax-m2.7:cloud
-    gemma4:31b-cloud
-    qwen3.5:397b-cloud
-    kimi-k2.5:cloud
-    cliproxyapi-gpt-5.4
-    cliproxyapi-gpt-5.2-codex
-    cliproxyapi-gpt-5.1-codex-max
-    cliproxyapi-gpt-5.4-mini
-    cliproxyapi-gpt-5.3-codex
-    cliproxyapi-gpt-5.2
-    cliproxyapi-gpt-5.1-codex-mini
-    cliproxyapi-codex-gpt-5
-    cliproxyapi-codex-gpt-5-codex
+    'codex-5.5(xhigh)'             
+    'codex-5.5(high)'              
+    'codex-5.5(medium)'            
+    'codex-5.4(xhigh)'             
+    'codex-5.4(high)'              
+    'codex-5.4(medium)'            
+    'codex-5.4-mini(xhigh)'        
+    'codex-5.4-mini(high)'         
+    'codex-5.4-mini(medium)'       
+    'codex-5.3-codex(xhigh)'       
+    'codex-5.3-codex(high)'        
+    'codex-5.3-codex(medium)'      
+    'codex-5.3-codex-spark(xhigh)' 
+    'codex-5.3-codex-spark(high)'  
+    'codex-5.3-codex-spark(medium)'
+    'codex-5.2(xhigh)'             
+    'codex-5.2(high)'              
+    'codex-5.2(medium)'            
+    'codex-5.5(xhigh-fast)'        
+    'codex-5.5(high-fast)'         
+    'codex-5.4(xhigh-fast)'        
+    'codex-5.4(high-fast)'         
+    'codex-5.3-codex(xhigh-fast)'  
+    'codex-5.3-codex(high-fast)'   
+    'or-minimax-m3'                
+    'or-minimax-m2.7'              
+    'or-kimi-k2.6'                 
+    'or-kimi-k2.5'                 
+    'or-glm-5'                     
+    'or-glm-5.1'                   
+    'or-glm-4.7'                   
+    'or-qwen3.7-max'               
+    'or-qwen3.6-plus'              
+    'or-qwen3.5-plus'              
+    'or-qwen3.5-397b'              
+    'or-qwen3-coder-next'          
+    'or-qwen3.5-flash-free'        
+    'glm-5.1:cloud'                
+    'minimax-m2.7:cloud'           
+    'minimax-m3:cloud'             
+    'qwen3.5:397b-cloud'           
+    'kimi-k2.6:cloud'              
+    'kimi-k2.5:cloud'              
   )
 
   local model=""
@@ -176,7 +301,55 @@ use_litellm_claude() {
     return 1
   fi
 
+  unset ANTHROPIC_DEFAULT_OPUS_MODEL_SUPPORTED_CAPABILITIES
+  unset ANTHROPIC_DEFAULT_SONNET_MODEL_SUPPORTED_CAPABILITIES
+  unset ANTHROPIC_DEFAULT_HAIKU_MODEL_SUPPORTED_CAPABILITIES
+  unset CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY
+  export CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS=1
+  export CLAUDE_CODE_SUBAGENT_MODEL="inherit"
+
+  if [[ "$model" == codex-* ]]; then
+    export ANTHROPIC_BASE_URL="$LITELLM_URL"
+    export ANTHROPIC_AUTH_TOKEN="$LITELLM_KEY"
+    unset LITELLM_API_KEY
+    unset ANTHROPIC_API_KEY
+    unset ANTHROPIC_API_URL
+
+    export ANTHROPIC_MODEL="$model"
+    export ANTHROPIC_DEFAULT_OPUS_MODEL="$model"
+    export ANTHROPIC_DEFAULT_OPUS_MODEL_NAME="$model"
+    export ANTHROPIC_DEFAULT_OPUS_MODEL_DESCRIPTION="LiteLLM -> CLIProxyAPI Codex"
+    export ANTHROPIC_DEFAULT_SONNET_MODEL="$model"
+    export ANTHROPIC_DEFAULT_SONNET_MODEL_NAME="$model"
+    export ANTHROPIC_DEFAULT_SONNET_MODEL_DESCRIPTION="LiteLLM -> CLIProxyAPI Codex"
+    export ANTHROPIC_DEFAULT_HAIKU_MODEL="$model"
+    export ANTHROPIC_DEFAULT_HAIKU_MODEL_NAME="$model"
+    export ANTHROPIC_DEFAULT_HAIKU_MODEL_DESCRIPTION="LiteLLM -> CLIProxyAPI Codex"
+
+    export ANTHROPIC_SMALL_FAST_MODEL="$model"
+    export ANTHROPIC_CUSTOM_MODEL_OPTION="$model"
+    export ANTHROPIC_CUSTOM_MODEL_OPTION_NAME="$model"
+    export ANTHROPIC_CUSTOM_MODEL_OPTION_DESCRIPTION="LiteLLM -> CLIProxyAPI Codex"
+
+    echo "Claude Code is configured directly for LiteLLM Codex."
+    echo "Base: ${LITELLM_URL}"
+    echo "Model: $model"
+    echo ""
+    echo "Run claude in this same shell."
+    echo "Use /model default, opus, sonnet, haiku, or pick \"$model\" from the custom entry."
+    return 0
+  fi
+
+  if ! command -v ccr >/dev/null 2>&1; then
+    echo "ccr is required for non-codex models. Install/start Claude Code Router, then retry." >&2
+    return 1
+  fi
+
   export LITELLM_API_KEY="$LITELLM_KEY"
+  unset ANTHROPIC_API_KEY
+  unset ANTHROPIC_AUTH_TOKEN
+  unset ANTHROPIC_BASE_URL
+  unset ANTHROPIC_API_URL
 
   mkdir -p "$HOME/.claude-code-router"
   cat > "$HOME/.claude-code-router/config.json" <<EOF
@@ -186,7 +359,7 @@ use_litellm_claude() {
   "Providers": [
     {
       "name": "litellm",
-      "api_base_url": "${LITTELM_URL}/v1/chat/completions",
+      "api_base_url": "${LITELLM_URL}/v1/chat/completions",
       "api_key": "\${LITELLM_API_KEY}",
       "models": ["$model"],
       "transformer": { "use": ["openai"] }
@@ -201,11 +374,28 @@ EOF
   ccr restart >/dev/null 2>&1 || ccr start
   eval "$(ccr activate)"
 
-  export ANTHROPIC_MODEL="litellm,$model"
+  local ccr_model="litellm,$model"
+  export ANTHROPIC_MODEL="$ccr_model"
+  export ANTHROPIC_DEFAULT_OPUS_MODEL="$ccr_model"
+  export ANTHROPIC_DEFAULT_OPUS_MODEL_NAME="$model"
+  export ANTHROPIC_DEFAULT_OPUS_MODEL_DESCRIPTION="CCR -> LiteLLM"
+  export ANTHROPIC_DEFAULT_SONNET_MODEL="$ccr_model"
+  export ANTHROPIC_DEFAULT_SONNET_MODEL_NAME="$model"
+  export ANTHROPIC_DEFAULT_SONNET_MODEL_DESCRIPTION="CCR -> LiteLLM"
+  export ANTHROPIC_DEFAULT_HAIKU_MODEL="$ccr_model"
+  export ANTHROPIC_DEFAULT_HAIKU_MODEL_NAME="$model"
+  export ANTHROPIC_DEFAULT_HAIKU_MODEL_DESCRIPTION="CCR -> LiteLLM"
+  export ANTHROPIC_SMALL_FAST_MODEL="$ccr_model"
+  export ANTHROPIC_CUSTOM_MODEL_OPTION="$ccr_model"
+  export ANTHROPIC_CUSTOM_MODEL_OPTION_NAME="$model"
+  export ANTHROPIC_CUSTOM_MODEL_OPTION_DESCRIPTION="CCR -> LiteLLM"
 
-  echo "Claude Code Router is configured for LiteLLM (trycloudflare)."
-  echo "Base: ${LITTELM_URL}/v1"
+  echo "Claude Code Router is configured for LiteLLM."
+  echo "Base: ${LITELLM_URL}/v1"
   echo "Model: $model"
+  echo ""
+  echo "Run claude in this same shell."
+  echo "Use /model default, opus, sonnet, haiku, or pick \"$model\" from the custom entry."
 }
 
 
