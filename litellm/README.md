@@ -4,9 +4,16 @@
 docker compose up -d
 ```
 
-# Access via Tailscale and Cloudflare quick tunnel
+# Public access for Cursor (pick one)
 
-`litellm` runs as a normal Docker service on port `4001`. Tailscale Funnel is the stable public path; Cloudflare quick tunnel remains available as an optional temporary path.
+`litellm` runs as a normal Docker service on port `4001`. Cursor needs a **public HTTPS** base URL — use **either** Tailscale Funnel **or** a Cloudflare quick tunnel, not both at once. You do not need to run Cloudflare if Funnel is already set up, and you do not need Funnel if you are using Cloudflare.
+
+| Path | When to use |
+|------|-------------|
+| **Tailscale Funnel** (default) | Stable `https://litellm-proxy.tail-xxxxx.ts.net` URL; requires the `tailscale` service and a tailnet auth key |
+| **Cloudflare quick tunnel** | Ephemeral `trycloudflare.com` URL; no Funnel approval; good for quick tests |
+
+Set `LITELLM_BASE_URL` in `.env` to whichever public URL you chose. The sections below describe each option.
 
 1. Create a **reusable** auth key: [Tailscale keys](https://login.tailscale.com/admin/settings/keys).
 2. Add to `.env`:
@@ -19,9 +26,11 @@ docker compose up -d
 3. Enable **MagicDNS**: [DNS settings](https://login.tailscale.com/admin/dns).
 4. Start: `docker compose up -d`
 
-## Tailscale Funnel for Cursor
+## Tailscale Funnel for Cursor (recommended public path)
 
-Cursor rejects private provider URLs, including `127.0.0.1`, LAN IPs, and private Tailscale `100.x` addresses. Use Tailscale Funnel for Cursor:
+If you are not using the Cloudflare section below, use Funnel as your single public HTTPS URL.
+
+Cursor rejects private provider URLs, including `127.0.0.1`, LAN IPs, and private Tailscale `100.x` addresses. Funnel exposes LiteLLM on the stable MagicDNS hostname:
 
 ```bash
 docker exec litellm-tailscale tailscale funnel --bg --https=443 --yes http://litellm:4001
@@ -46,9 +55,11 @@ API key:  LITELLM_MASTER_KEY
 
 Funnel is public internet exposure. LiteLLM's `LITELLM_MASTER_KEY` protects the API, so keep it strong.
 
-## Optional Cloudflare quick tunnel
+## Cloudflare quick tunnel (alternative to Funnel)
 
-Cloudflare quick tunnels still work as an alternate public URL, but the URL is ephemeral and can change after sleep, restart, or tunnel recreation.
+Use this **instead of** Tailscale Funnel when you want a public URL without enabling Funnel on your tailnet node. Do not run Funnel and Cloudflare at the same time unless you intentionally want two public entry points; for normal use, pick one and set `LITELLM_BASE_URL` accordingly.
+
+The quick-tunnel URL is ephemeral and can change after sleep, restart, or tunnel recreation.
 
 Start the optional Cloudflare tunnel:
 
@@ -108,7 +119,7 @@ Use `${LITELLM_BASE_URL}` and `LITELLM_MASTER_KEY` from `.env` in Claude Code. T
 
 # CLIProxyAPI-backed Codex models
 
-`Cursor/client -> Tailscale Funnel or Cloudflare quick tunnel -> LiteLLM -> CLIProxyAPI (Docker :8317)`
+`Cursor/client -> (Tailscale Funnel **or** Cloudflare quick tunnel — one public path) -> LiteLLM -> CLIProxyAPI (Docker :8317)`
 
 Tailnet-only clients can also use `http://litellm-proxy.tail-xxxxx.ts.net:4001`.
 
