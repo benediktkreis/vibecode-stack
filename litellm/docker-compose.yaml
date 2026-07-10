@@ -21,13 +21,13 @@ services:
     environment:
       CLIPROXYAPI_BASE_URL: ${CLIPROXYAPI_BASE_URL:-http://cliproxyapi:8317/v1}
       CLIPROXYAPI_API_KEY: ${CLIPROXYAPI_API_KEY:-sk-dummy}
-      # GITHUB_COPILOT_TOKEN_DIR: /root/.config/litellm/github_copilot
+      GITHUB_COPILOT_TOKEN_DIR: /root/.config/litellm/github_copilot
     env_file:
       - .env
     volumes:
       - ./config.yaml:/app/config.yaml
       - ./configs:/app/configs:ro
-      # - ./github_copilot:/root/.config/litellm/github_copilot
+      - ./github_copilot:/root/.config/litellm/github_copilot
       - ./scripts/docker-entrypoint.sh:/app/docker/litellm-entrypoint.sh:ro
       - ./scripts/generate-runtime-config.py:/app/scripts/generate-runtime-config.py:ro
     entrypoint: ["/app/docker/litellm-entrypoint.sh"]

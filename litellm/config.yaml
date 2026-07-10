@@ -14,7 +14,7 @@ include:
   # - configs/ollama-cloud.yaml
   # - configs/opencode.yaml
   - configs/cliproxyapi-openai.yaml
-  # - configs/github-copilot.yaml
+  - configs/github-copilot.yaml
 
 general_settings:
   master_key: os.environ/LITELLM_MASTER_KEY
