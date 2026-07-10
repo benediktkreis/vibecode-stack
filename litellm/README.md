@@ -1,7 +1,9 @@
 # Start everything
 
+After pulling changes, execute:
 ```
-docker compose up -d
+docker compose pull
+docker compose up -d --force-recreate
 ```
 
 # Public access for Cursor (pick one)
