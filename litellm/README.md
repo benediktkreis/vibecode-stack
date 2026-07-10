@@ -25,6 +25,7 @@ Set `LITELLM_BASE_URL` in `.env` to whichever public URL you chose. The sections
    Replace `tail-xxxxx` with your tailnet suffix (see [Machines](https://login.tailscale.com/admin/machines) after the first `docker compose up`).
 3. Enable **MagicDNS**: [DNS settings](https://login.tailscale.com/admin/dns).
 4. Start: `docker compose up -d`
+5. If the `tailscale` container fails to start on Mac, keep `TS_USERSPACE=true` in `.env` (default). On Linux you can try `TS_USERSPACE=false` for kernel mode.
 
 ## Tailscale Funnel for Cursor (recommended public path)
 
@@ -54,6 +55,8 @@ API key:  LITELLM_MASTER_KEY
 ```
 
 Funnel is public internet exposure. LiteLLM's `LITELLM_MASTER_KEY` protects the API, so keep it strong.
+
+On the Docker host only, you can sanity-check with `curl http://127.0.0.1:4001/health/liveliness` (Cursor and other remote clients must use the Funnel URL, not localhost).
 
 ## Cloudflare quick tunnel (alternative to Funnel)
 
@@ -91,37 +94,11 @@ docker compose --profile cloudflare-quick stop cloudflared-quick
 
 The Cloudflare quick tunnel targets `http://litellm:4001`; it does not proxy through Tailscale.
 
-## Tailnet-only access
-
-On each **client device**, install the Tailscale app and sign in to the same tailnet (no Tailscale required on the Docker host beyond the container).
-
-Enable a tailnet-only HTTP listener on port `4001`:
-
-```bash
-docker exec litellm-tailscale tailscale serve --bg --http=4001 http://litellm:4001
-```
-
-```bash
-# From any device on the tailnet
-curl "http://${TS_HOSTNAME}.tail-xxxxx.ts.net:4001/health/liveliness"
-curl "http://${TS_HOSTNAME}.tail-xxxxx.ts.net:4001/v1/models" -H "Authorization: Bearer $LITELLM_MASTER_KEY"
-```
-
-Optional local access on the Docker host (port published by the `litellm` service):
-
-```bash
-curl http://127.0.0.1:4001/health/liveliness
-```
-
-If the `tailscale` container fails to start on Mac, keep `TS_USERSPACE=true` in `.env` (default). On Linux you can try `TS_USERSPACE=false` for kernel mode.
-
 Use `${LITELLM_BASE_URL}` and `LITELLM_MASTER_KEY` from `.env` in Claude Code. The helper below routes `codex-*` models directly through LiteLLM's Claude-compatible endpoint, and routes all other models through Claude Code Router into LiteLLM's OpenAI-compatible chat endpoint. For OpenAI-compatible clients, use `${LITELLM_BASE_URL}` or `${LITELLM_BASE_URL}/v1` depending on what that client expects.
 
 # CLIProxyAPI-backed Codex models
 
 `Cursor/client -> (Tailscale Funnel **or** Cloudflare quick tunnel — one public path) -> LiteLLM -> CLIProxyAPI (Docker :8317)`
-
-Tailnet-only clients can also use `http://litellm-proxy.tail-xxxxx.ts.net:4001`.
 
 The compose stack:
 
@@ -149,7 +126,7 @@ litellm_base_url() {
     echo "${LITELLM_BASE_URL%/}"
     return 0
   fi
-  echo "Set LITELLM_BASE_URL in $HOME/vibecode/litellm/.env (e.g. https://litellm-proxy.tail-xxxxx.ts.net)" >&2
+  echo "Set LITELLM_BASE_URL in $HOME/vibecode-stack/litellm/.env (e.g. https://litellm-proxy.tail-xxxxx.ts.net)" >&2
   return 1
 }
 
@@ -157,7 +134,7 @@ use_litellm_cursor() {
   local DB="$HOME/Library/Application Support/Cursor/User/globalStorage/state.vscdb"
   local JSON_KEY="src.vs.platform.reactivestorage.browser.reactiveStorageServiceImpl.persistentStorage.applicationUser"
   local LITTELM_KEY="..."
-  local LITELLM_DIR="$HOME/vibecode/litellm"
+  local LITELLM_DIR="$HOME/vibecode-stack/litellm"
 
   pkill -x Cursor || true
   sleep 1
@@ -226,7 +203,7 @@ use_litellm_claude() {
     return 0
   fi
 
-  local LITELLM_DIR="$HOME/vibecode/litellm"
+  local LITELLM_DIR="$HOME/vibecode-stack/litellm"
 
   if [ -f "$LITELLM_DIR/.env" ]; then
     set -a

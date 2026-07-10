@@ -4,7 +4,8 @@
 #    or-*    -> OpenRouter
 #    *:cloud -> Ollama Cloud
 #    cpa-openai* -> CLIProxyAPI (Codex OAuth via local proxy)
-#    copilot-* -> GitHub Copilot
+#    copilot-* -> GitHub Copilot (optional — enabled at startup when
+#               github_copilot/ has access-token or api-key.json)
 # ============================================================
 
 include:

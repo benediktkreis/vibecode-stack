@@ -6,7 +6,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TOKEN_DIR="${SCRIPT_DIR}/github_copilot"
+ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+TOKEN_DIR="${ROOT_DIR}/github_copilot"
 mkdir -p "$TOKEN_DIR"
 
 CLIENT_ID="Iv1.b507a08c87ecfe98"
@@ -74,4 +75,5 @@ echo "OK — wrote:"
 echo "  ${TOKEN_DIR}/access-token"
 echo "  ${TOKEN_DIR}/api-key.json"
 echo ""
-echo "Start or restart the proxy (e.g. bash ./restart.sh) so the volume picks up these files."
+echo "Restart the proxy (e.g. docker compose restart litellm) to load copilot-* models."
+echo "Without tokens, the proxy starts normally and skips copilot-* models."

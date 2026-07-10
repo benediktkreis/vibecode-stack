@@ -28,7 +28,11 @@ services:
       - ./config.yaml:/app/config.yaml
       - ./configs:/app/configs:ro
       # - ./github_copilot:/root/.config/litellm/github_copilot
-    command: ["--config", "/app/config.yaml", "--port", "4001", "--host", "0.0.0.0"]
+      - ./scripts/docker-entrypoint.sh:/app/docker/litellm-entrypoint.sh:ro
+      - ./scripts/generate-runtime-config.py:/app/scripts/generate-runtime-config.py:ro
+    entrypoint: ["/app/docker/litellm-entrypoint.sh"]
+    command:
+      ["--config", "/app/config.runtime.yaml", "--port", "4001", "--host", "0.0.0.0"]
     restart: unless-stopped
     healthcheck:
       test:
