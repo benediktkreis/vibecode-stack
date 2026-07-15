@@ -3,7 +3,7 @@
 
 Using this LiteLLM setup as a unified LLM gateway for the vibecode harness (e.g. Claude Code and Cursor).
 
-### Unified LLM Gateway Architecture
+### Architecture
 
 ![Unified LLM gateway architecture — LiteLLM proxy with Tailscale and CLIProxyAPI](./litellm/docs/architecture.png)
 
