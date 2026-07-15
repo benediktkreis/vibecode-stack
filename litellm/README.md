@@ -1,3 +1,7 @@
+# Architecture
+
+![Request/response architecture with Tailscale and CLIProxyAPI](./docs/architecture.png)
+
 # Start everything
 
 ```
