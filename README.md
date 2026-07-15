@@ -1,17 +1,21 @@
 
 ## LiteLLM Setup
 
-Using this LiteLLM setup as a Unified LLM connection for vibecode harness (e.g Claude Code and Cursor) 
+Using this LiteLLM setup as a unified LLM gateway for the vibecode harness (e.g. Claude Code and Cursor).
+
+### Unified LLM Gateway Architecture
+
+![Unified LLM gateway architecture — LiteLLM proxy with Tailscale and CLIProxyAPI](./litellm/docs/architecture.png)
 
 ## Helper Extensions
 
-Cursor Openai Enabler : https://github.com/ttempaa/cursor-openai-enabler/tree/master
-- To toggle the external API KEY FOR Cursor via shortcut.
+Cursor extensions that I use for convenience.
 
-Hunkwise : https://github.com/molon/hunkwise
-- To show inline differences for changes added by Codex and OpenCode/OpenChamber
+See [helper-extensions/README.md](./helper-extensions/README.md).
 
-Claude code context plus : https://github.com/jeffycyang/claude-vscode-context-plus
-- To add selections to context for Claude code when using it in the terminal of the IDE.
+## IDE Setup
 
+Shared keybindings that map shortcuts to ChatGPT, Claude, Gemini, OpenChamber, and the helper extensions and Ubuntu Cursor install.
+
+See [ide-setup/README.md](./ide-setup/README.md).
 
