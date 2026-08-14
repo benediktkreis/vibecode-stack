@@ -9,86 +9,32 @@ model_list:
         reasoning:
           enabled: true
 
-  - model_name: or-minimax-m2.7
+  - model_name: or-kimi-k3
     litellm_params:
-      model: openrouter/minimax/minimax-m2.7
-      api_key: os.environ/OPENROUTER_API_KEY
-      api_base: https://openrouter.ai/api/v1
-      extra_body:
-        reasoning:
-          enabled: true
-
-  - model_name: or-minimax-m2.5
-    litellm_params:
-      model: openrouter/minimax/minimax-m2.5
-      api_key: os.environ/OPENROUTER_API_KEY
-      api_base: https://openrouter.ai/api/v1
-      extra_body:
-        reasoning:
-          enabled: true
-
-  - model_name: or-kimi-k2.6
-    litellm_params:
-      model: openrouter/moonshotai/kimi-k2.6
+      model: openrouter/moonshotai/kimi-k3
       api_key: os.environ/OPENROUTER_API_KEY
       api_base: https://openrouter.ai/api/v1
 
-  - model_name: or-kimi-k2.5
+  - model_name: or-glm-5.2
     litellm_params:
-      model: openrouter/moonshotai/kimi-k2.5
+      model: openrouter/z-ai/glm-5.2
       api_key: os.environ/OPENROUTER_API_KEY
       api_base: https://openrouter.ai/api/v1
 
-  - model_name: or-glm-5
+  - model_name: or-qwen3.8-max
     litellm_params:
-      model: openrouter/z-ai/glm-5
+      model: openrouter/qwen/qwen3.8-max
       api_key: os.environ/OPENROUTER_API_KEY
       api_base: https://openrouter.ai/api/v1
 
-  - model_name: or-glm-5.1
+  - model_name: or-deepseek-v4-flash-0731
     litellm_params:
-      model: openrouter/z-ai/glm-5.1
+      model: openrouter/deepseek/deepseek-v4-flash-0731
       api_key: os.environ/OPENROUTER_API_KEY
       api_base: https://openrouter.ai/api/v1
 
-  - model_name: or-glm-4.7
+  - model_name: or-deepseek-v4-pro-0813
     litellm_params:
-      model: openrouter/z-ai/glm-4.7
-      api_key: os.environ/OPENROUTER_API_KEY
-      api_base: https://openrouter.ai/api/v1
-
-  - model_name: or-qwen3.7-max
-    litellm_params:
-      model: openrouter/qwen/qwen3.7-max
-      api_key: os.environ/OPENROUTER_API_KEY
-      api_base: https://openrouter.ai/api/v1
-
-  - model_name: or-qwen3.6-plus
-    litellm_params:
-      model: openrouter/qwen/qwen3.6-plus
-      api_key: os.environ/OPENROUTER_API_KEY
-      api_base: https://openrouter.ai/api/v1
-
-  - model_name: or-qwen3.5-plus
-    litellm_params:
-      model: openrouter/qwen/qwen3.5-plus-02-15
-      api_key: os.environ/OPENROUTER_API_KEY
-      api_base: https://openrouter.ai/api/v1
-
-  - model_name: or-qwen3.5-397b
-    litellm_params:
-      model: openrouter/qwen/qwen3.5-397b-a17b
-      api_key: os.environ/OPENROUTER_API_KEY
-      api_base: https://openrouter.ai/api/v1
-
-  - model_name: or-qwen3-coder-next
-    litellm_params:
-      model: openrouter/qwen/qwen3-coder-next
-      api_key: os.environ/OPENROUTER_API_KEY
-      api_base: https://openrouter.ai/api/v1
-
-  - model_name: or-qwen3.5-flash-free
-    litellm_params:
-      model: openrouter/qwen/qwen3.5-flash-02-23
+      model: openrouter/deepseek/deepseek-v4-pro-0813
       api_key: os.environ/OPENROUTER_API_KEY
       api_base: https://openrouter.ai/api/v1

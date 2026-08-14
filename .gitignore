@@ -7,3 +7,4 @@ litellm/github_copilot
 litellm/Notes.md
 litellm/version-checking.md
 *.excalidraw
+.DS_Store
