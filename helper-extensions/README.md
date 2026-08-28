@@ -3,7 +3,7 @@
 Cursor Openai Enabler : https://github.com/ttempaa/cursor-openai-enabler/tree/master
 - To toggle the external API KEY FOR Cursor via shortcut.
 
-Hunkwise : https://github.com/molon/hunkwise
+Hunkwise (No longer needed — I’ve moved to the CLI.) : https://github.com/molon/hunkwise
 - To show inline differences for changes added by Codex and OpenCode/OpenChamber
 
 Claude code context plus : https://github.com/jeffycyang/claude-vscode-context-plus
