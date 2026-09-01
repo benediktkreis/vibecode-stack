@@ -10,27 +10,95 @@ debug: false
 
 oauth-model-alias:
   codex:
+    - name: "gpt-5.6-sol"
+      alias: "gpt-5.6-sol-xhigh-fast"
+      fork: true
+    - name: "gpt-5.6-sol"
+      alias: "gpt-5.6-sol-high-fast"
+      fork: true
+    - name: "gpt-5.6-terra"
+      alias: "gpt-5.6-terra-xhigh-fast"
+      fork: true
+    - name: "gpt-5.6-terra"
+      alias: "gpt-5.6-terra-high-fast"
+      fork: true
+    - name: "gpt-5.6-luna"
+      alias: "gpt-5.6-luna-xhigh-fast"
+      fork: true
+    - name: "gpt-5.6-luna"
+      alias: "gpt-5.6-luna-high-fast"
+      fork: true
+    - name: "gpt-5.6-luna"
+      alias: "gpt-5.6-luna-max-fast"
+      fork: true
+    - name: "gpt-5.6-luna"
+      alias: "gpt-5.6-luna-medium-fast"
+      fork: true
+    - name: "gpt-5.6-luna"
+      alias: "gpt-5.6-luna-low-fast"
+      fork: true
     - name: "gpt-5.5"
       alias: "gpt-5.5-xhigh-fast"
       fork: true
     - name: "gpt-5.5"
       alias: "gpt-5.5-high-fast"
       fork: true
-    - name: "gpt-5.4"
-      alias: "gpt-5.4-xhigh-fast"
-      fork: true
-    - name: "gpt-5.4"
-      alias: "gpt-5.4-high-fast"
-      fork: true
-    - name: "gpt-5.3-codex"
-      alias: "gpt-5.3-codex-xhigh-fast"
-      fork: true
-    - name: "gpt-5.3-codex"
-      alias: "gpt-5.3-codex-high-fast"
-      fork: true
-
 payload:
   override:
+    - models:
+        - name: "gpt-5.6-sol-xhigh-fast"
+          protocol: "codex"
+      params:
+        service_tier: "priority"
+        reasoning.effort: "xhigh"
+    - models:
+        - name: "gpt-5.6-sol-high-fast"
+          protocol: "codex"
+      params:
+        service_tier: "priority"
+        reasoning.effort: "high"
+    - models:
+        - name: "gpt-5.6-terra-xhigh-fast"
+          protocol: "codex"
+      params:
+        service_tier: "priority"
+        reasoning.effort: "xhigh"
+    - models:
+        - name: "gpt-5.6-terra-high-fast"
+          protocol: "codex"
+      params:
+        service_tier: "priority"
+        reasoning.effort: "high"
+    - models:
+        - name: "gpt-5.6-luna-xhigh-fast"
+          protocol: "codex"
+      params:
+        service_tier: "priority"
+        reasoning.effort: "xhigh"
+    - models:
+        - name: "gpt-5.6-luna-high-fast"
+          protocol: "codex"
+      params:
+        service_tier: "priority"
+        reasoning.effort: "high"
+    - models:
+        - name: "gpt-5.6-luna-max-fast"
+          protocol: "codex"
+      params:
+        service_tier: "priority"
+        reasoning.effort: "max"
+    - models:
+        - name: "gpt-5.6-luna-medium-fast"
+          protocol: "codex"
+      params:
+        service_tier: "priority"
+        reasoning.effort: "medium"
+    - models:
+        - name: "gpt-5.6-luna-low-fast"
+          protocol: "codex"
+      params:
+        service_tier: "priority"
+        reasoning.effort: "low"
     - models:
         - name: "gpt-5.5-xhigh-fast"
           protocol: "codex"
@@ -39,30 +107,6 @@ payload:
         reasoning.effort: "xhigh"
     - models:
         - name: "gpt-5.5-high-fast"
-          protocol: "codex"
-      params:
-        service_tier: "priority"
-        reasoning.effort: "high"
-    - models:
-        - name: "gpt-5.4-xhigh-fast"
-          protocol: "codex"
-      params:
-        service_tier: "priority"
-        reasoning.effort: "xhigh"
-    - models:
-        - name: "gpt-5.4-high-fast"
-          protocol: "codex"
-      params:
-        service_tier: "priority"
-        reasoning.effort: "high"
-    - models:
-        - name: "gpt-5.3-codex-xhigh-fast"
-          protocol: "codex"
-      params:
-        service_tier: "priority"
-        reasoning.effort: "xhigh"
-    - models:
-        - name: "gpt-5.3-codex-high-fast"
           protocol: "codex"
       params:
         service_tier: "priority"
