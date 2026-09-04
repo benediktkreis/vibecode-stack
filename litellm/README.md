@@ -230,6 +230,12 @@ use_litellm_claude() {
   echo "🌐 LiteLLM proxy URL: $LITELLM_URL"
 
   local models=(
+    'codex-6-astra(ultra)'
+    'codex-6-astra(max)'
+    'codex-6-astra(xhigh)'
+    'codex-6-astra(high)'
+    'codex-6-astra(medium)'
+    'codex-6-astra(low)'
     'codex-5.6-sol(ultra)'         
     'codex-5.6-sol(max)'           
     'codex-5.6-sol(xhigh)'         

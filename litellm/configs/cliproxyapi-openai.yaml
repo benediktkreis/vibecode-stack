@@ -1,5 +1,48 @@
 model_list:
   # ── CLIPROXYAPI / CODEX OAUTH ──────────────────────────────
+  # gpt-6-astra
+  - model_name: codex-6-astra
+    litellm_params:
+      model: openai/gpt-6-astra
+      api_base: os.environ/CLIPROXYAPI_BASE_URL
+      api_key: os.environ/CLIPROXYAPI_API_KEY
+
+  - model_name: codex-6-astra(ultra)
+    litellm_params:
+      model: openai/gpt-6-astra(ultra)
+      api_base: os.environ/CLIPROXYAPI_BASE_URL
+      api_key: os.environ/CLIPROXYAPI_API_KEY
+
+  - model_name: codex-6-astra(max)
+    litellm_params:
+      model: openai/gpt-6-astra(max)
+      api_base: os.environ/CLIPROXYAPI_BASE_URL
+      api_key: os.environ/CLIPROXYAPI_API_KEY
+
+  - model_name: codex-6-astra(xhigh)
+    litellm_params:
+      model: openai/gpt-6-astra(xhigh)
+      api_base: os.environ/CLIPROXYAPI_BASE_URL
+      api_key: os.environ/CLIPROXYAPI_API_KEY
+
+  - model_name: codex-6-astra(high)
+    litellm_params:
+      model: openai/gpt-6-astra(high)
+      api_base: os.environ/CLIPROXYAPI_BASE_URL
+      api_key: os.environ/CLIPROXYAPI_API_KEY
+
+  - model_name: codex-6-astra(medium)
+    litellm_params:
+      model: openai/gpt-6-astra(medium)
+      api_base: os.environ/CLIPROXYAPI_BASE_URL
+      api_key: os.environ/CLIPROXYAPI_API_KEY
+
+  - model_name: codex-6-astra(low)
+    litellm_params:
+      model: openai/gpt-6-astra(low)
+      api_base: os.environ/CLIPROXYAPI_BASE_URL
+      api_key: os.environ/CLIPROXYAPI_API_KEY
+
   # gpt-5.6-sol
   - model_name: codex-5.6-sol(ultra)
     litellm_params:
