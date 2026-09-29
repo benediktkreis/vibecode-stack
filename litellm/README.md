@@ -1,3 +1,7 @@
+# Architecture
+
+![Request/response architecture with Tailscale and CLIProxyAPI](./docs/architecture.png)
+
 # Start everything
 
 After pulling changes, execute:
@@ -228,30 +232,31 @@ use_litellm_claude() {
   echo "🌐 LiteLLM proxy URL: $LITELLM_URL"
 
   local models=(
-    'codex-5.5(xhigh)'             
-    'codex-5.5(high)'              
-    'codex-5.5(medium)'            
-    'codex-5.4(xhigh)'             
-    'codex-5.4(high)'              
-    'codex-5.4(medium)'            
-    'codex-5.4-mini(xhigh)'        
-    'codex-5.4-mini(high)'         
-    'codex-5.4-mini(medium)'       
-    'codex-5.3-codex(xhigh)'       
-    'codex-5.3-codex(high)'        
-    'codex-5.3-codex(medium)'      
-    'codex-5.3-codex-spark(xhigh)' 
-    'codex-5.3-codex-spark(high)'  
-    'codex-5.3-codex-spark(medium)'
-    'codex-5.2(xhigh)'             
-    'codex-5.2(high)'              
-    'codex-5.2(medium)'            
-    'codex-5.5(xhigh-fast)'        
-    'codex-5.5(high-fast)'         
-    'codex-5.4(xhigh-fast)'        
-    'codex-5.4(high-fast)'         
-    'codex-5.3-codex(xhigh-fast)'  
-    'codex-5.3-codex(high-fast)'   
+    'codex-6-astra(max)'
+    'codex-6-astra(xhigh)'
+    'codex-6-astra(high)'
+    'codex-6-astra(medium)'
+    'codex-6-astra(low)'
+    'codex-6-sol'
+    'codex-6-sol(max)'
+    'codex-6-sol(xhigh)'
+    'codex-6-sol(high)'
+    'codex-6-sol(medium)'
+    'codex-6-sol(low)'
+    'codex-6-luna'
+    'codex-6-luna(max)'
+    'codex-6-luna(xhigh)'
+    'codex-6-luna(high)'
+    'codex-6-luna(medium)'
+    'codex-6-luna(low)'
+    'codex-5.6-sol(max)'           
+    'codex-5.6-sol(xhigh)'         
+    'codex-5.6-sol(high)'          
+    'codex-5.6-sol(medium)'        
+    'codex-5.6-luna(max)'          
+    'codex-5.6-luna(xhigh)'        
+    'codex-5.6-luna(high)'         
+    'codex-5.6-luna(medium)'       
     'or-minimax-m3'                
     'or-minimax-m2.7'              
     'or-kimi-k2.6'                 
